@@ -27,6 +27,8 @@ public class ExampleProviderCsharpTest
 	}
 
 	[Fact]
+	[Trait("Category", "Contract")]
+	[Trait("ContractRole", "Consumer")]
 	public async Task GetAllPosts_IsLoggedIn_ReturnsAllIds()
 	{
 		string sessionId = "valid-token";
@@ -58,6 +60,8 @@ public class ExampleProviderCsharpTest
 	}
 
 	[Fact]
+	[Trait("Category", "Contract")]
+	[Trait("ContractRole", "Consumer")]
 	public async Task GetAllPosts_IsNotLoggedIn_GivesUnauthorizedError()
 	{
 		string sessionId = "invalid-token";
@@ -80,6 +84,8 @@ public class ExampleProviderCsharpTest
 	}
 
 	[Fact]
+	[Trait("Category", "Contract")]
+	[Trait("ContractRole", "Consumer")]
 	public async Task CreateNewPost_IsLoggedIn_ReturnsNewId()
 	{
 		string sessionId = "valid-token";

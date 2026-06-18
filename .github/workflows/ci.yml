@@ -1,0 +1,40 @@
+name: CI
+
+on: 
+  push
+
+env:
+  GITHUB_PACKAGE_USER_NAME: ${{ github.actor }} 
+  GITHUB_PACKAGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GIT_BRANCH: ${{ github.ref_name }}
+  GIT_SHA: ${{ github.sha }}
+  REPOSITORY_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build-service:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Run normal tests 
+        run: dotnet test --no-build --filter "Category!=Contract"
+      - name: Run consumer contract tests
+        run: dotnet test --no-build --filter "Category=Contract&ContractRole=Consumer"
+      - name: Publish consumer contracts
+        uses: pactflow/actions/publish-pact-files@v2
+        with:
+          pactfiles: pacts
+          version: ${{ github.sha }}
+          branch: ${{ github.ref_name }}
+          broker_url: ${{ vars.BROKER_URL }}
+      - name: Run provider contract tests
+        run: dotnet test --no-build --filter "Category=Contract&ContractRole=Provider"
