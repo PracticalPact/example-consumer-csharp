@@ -1,0 +1,2 @@
+# Example Consumer C#
+This is an example of a micro-service that can act as a Consumer. It's an extremely minimal frontend for a forum where you can log in and create posts. It relies on two other microservices: a backend and an sso. You do not need these for the Consumer tests. They are WIP and not yet published.

@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 
 namespace ForumFrontend;
 
-internal class PostClient : IDisposable
+public partial class PostClient : IDisposable
 {
 	private const string sessionIdKey = "session-id";
 	private readonly HttpClient _httpClient;
@@ -14,27 +14,39 @@ internal class PostClient : IDisposable
 		_httpClient.BaseAddress = baseUri;
 	}
 
-	public async Task<Result> GetAllPosts(string sessionId)
+	public async Task<ClientResult> GetAllPosts(string sessionId)
 	{
 		HttpRequestMessage request = new(HttpMethod.Get, "/posts");
 		request.Headers.Add(sessionIdKey, sessionId);
 
 		var response = await _httpClient.SendAsync(request);
 
-		return await ParseResponse<GetAllPostsResponse>(response);
+		return response.StatusCode switch
+		{
+			HttpStatusCode.OK => new SuccessResult<GetAllPostsResponse>(await ReadSuccessContent<GetAllPostsResponse>(response)),
+			HttpStatusCode.Unauthorized => new UnauthorizedErrorResult(),
+			HttpStatusCode.InternalServerError => new ServerErrorResult(response.ReasonPhrase ?? ""),
+			_ => throw new HttpRequestException($"Unexpected status code {response.StatusCode} with reason: {response.ReasonPhrase ?? "none"}.")
+		};
 	}
 
-	public async Task<Result> GetPostDetails(string sessionId)
+	public async Task<ClientResult> GetPostDetails(string sessionId)
 	{
 		HttpRequestMessage request = new(HttpMethod.Get, "/post");
 		request.Headers.Add(sessionIdKey, sessionId);
 
 		var response = await _httpClient.SendAsync(request);
 
-		return await ParseResponse<GetPostDetailsResponse>(response);
+		return response.StatusCode switch
+		{
+			HttpStatusCode.OK => new SuccessResult<GetPostDetailsResponse>(await ReadSuccessContent<GetPostDetailsResponse>(response)),
+			HttpStatusCode.Unauthorized => new UnauthorizedErrorResult(),
+			HttpStatusCode.InternalServerError => new ServerErrorResult(response.ReasonPhrase ?? ""),
+			_ => throw new HttpRequestException($"Unexpected status code {response.StatusCode} with reason: {response.ReasonPhrase ?? "none"}.")
+		};
 	}
 
-	public async Task<Result> CreateNewPost(string sessionId, string title, string content)
+	public async Task<ClientResult> CreateNewPost(string sessionId, string title, string content)
 	{
 		HttpRequestMessage request = new(HttpMethod.Post, "/posts");
 		request.Headers.Add(sessionIdKey, sessionId);
@@ -42,21 +54,9 @@ internal class PostClient : IDisposable
 
 		var response = await _httpClient.SendAsync(request);
 
-		return await ParseResponse<CreateNewPostResponse>(response);
-	}
-
-	/// <summary>
-	/// Turns an HTTP response into a Result object that internal systems understand.
-	/// </summary>
-	/// <typeparam name="TContent">The type of content in a successful result.</typeparam>
-	/// <param name="response">The response given by the http client.</param>
-	/// <returns>A parsed result without http-specifics.</returns>
-	/// <exception cref="HttpRequestException">Thrown on an unexpected http response. Indicates that something is unexpectedly wrong.</exception>
-	private static async Task<Result> ParseResponse<TContent>(HttpResponseMessage response)
-	{
 		return response.StatusCode switch
 		{
-			HttpStatusCode.OK => new SuccessResult<TContent>(await ReadSuccessContent<TContent>(response)),
+			HttpStatusCode.Created => new SuccessResult<CreateNewPostResponse>(await ReadSuccessContent<CreateNewPostResponse>(response)),
 			HttpStatusCode.Unauthorized => new UnauthorizedErrorResult(),
 			HttpStatusCode.InternalServerError => new ServerErrorResult(response.ReasonPhrase ?? ""),
 			_ => throw new HttpRequestException($"Unexpected status code {response.StatusCode} with reason: {response.ReasonPhrase ?? "none"}.")
@@ -118,32 +118,6 @@ internal class PostClient : IDisposable
 		public override string ToString()
 		{
 			return $"Post successfully created with id {Id}\n";
-		}
-	}
-
-	public abstract record Result;
-
-	public record SuccessResult<TContent>(TContent content) : Result
-	{
-		public override string ToString()
-		{
-			return content.ToString();
-		}
-	}
-
-	public record UnauthorizedErrorResult : Result
-	{
-		public override string ToString()
-		{
-			return $"An authorization error occured. Try logging in again.\n";
-		}
-	}
-
-	public record ServerErrorResult(string message) : Result
-	{
-		public override string ToString()
-		{
-			return $"A server error occured: {message}.\n";
 		}
 	}
 }
