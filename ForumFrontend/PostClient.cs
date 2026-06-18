@@ -14,7 +14,7 @@ internal class PostClient : IDisposable
 		_httpClient.BaseAddress = baseUri;
 	}
 
-	public async Task<Result<GetAllPostsResponse>> GetAllPosts(string sessionId)
+	public async Task<Result> GetAllPosts(string sessionId)
 	{
 		HttpRequestMessage request = new(HttpMethod.Get, "/posts");
 		request.Headers.Add(sessionIdKey, sessionId);
@@ -24,7 +24,7 @@ internal class PostClient : IDisposable
 		return await ParseResponse<GetAllPostsResponse>(response);
 	}
 
-	public async Task<Result<GetPostDetailsResponse>> GetPostDetails(string sessionId)
+	public async Task<Result> GetPostDetails(string sessionId)
 	{
 		HttpRequestMessage request = new(HttpMethod.Get, "/post");
 		request.Headers.Add(sessionIdKey, sessionId);
@@ -34,7 +34,7 @@ internal class PostClient : IDisposable
 		return await ParseResponse<GetPostDetailsResponse>(response);
 	}
 
-	public async Task<Result<CreateNewPostResponse>> CreateNewPost(string sessionId, string title, string content)
+	public async Task<Result> CreateNewPost(string sessionId, string title, string content)
 	{
 		HttpRequestMessage request = new(HttpMethod.Post, "/posts");
 		request.Headers.Add(sessionIdKey, sessionId);
@@ -52,13 +52,13 @@ internal class PostClient : IDisposable
 	/// <param name="response">The response given by the http client.</param>
 	/// <returns>A parsed result without http-specifics.</returns>
 	/// <exception cref="HttpRequestException">Thrown on an unexpected http response. Indicates that something is unexpectedly wrong.</exception>
-	private static async Task<Result<TContent>> ParseResponse<TContent>(HttpResponseMessage response)
+	private static async Task<Result> ParseResponse<TContent>(HttpResponseMessage response)
 	{
 		return response.StatusCode switch
 		{
 			HttpStatusCode.OK => new SuccessResult<TContent>(await ReadSuccessContent<TContent>(response)),
-			HttpStatusCode.Unauthorized => new UnauthorizedErrorResult<TContent>(),
-			HttpStatusCode.InternalServerError => new ServerErrorResult<TContent>(response.ReasonPhrase ?? ""),
+			HttpStatusCode.Unauthorized => new UnauthorizedErrorResult(),
+			HttpStatusCode.InternalServerError => new ServerErrorResult(response.ReasonPhrase ?? ""),
 			_ => throw new HttpRequestException($"Unexpected status code {response.StatusCode} with reason: {response.ReasonPhrase ?? "none"}.")
 		};
 	}
@@ -121,9 +121,9 @@ internal class PostClient : IDisposable
 		}
 	}
 
-	public abstract record Result<TContent>;
+	public abstract record Result;
 
-	public record SuccessResult<TContent>(TContent content) : Result<TContent>
+	public record SuccessResult<TContent>(TContent content) : Result
 	{
 		public override string ToString()
 		{
@@ -131,7 +131,7 @@ internal class PostClient : IDisposable
 		}
 	}
 
-	public record UnauthorizedErrorResult<TContent> : Result<TContent>
+	public record UnauthorizedErrorResult : Result
 	{
 		public override string ToString()
 		{
@@ -139,7 +139,7 @@ internal class PostClient : IDisposable
 		}
 	}
 
-	public record ServerErrorResult<TContent>(string message) : Result<TContent>
+	public record ServerErrorResult(string message) : Result
 	{
 		public override string ToString()
 		{
