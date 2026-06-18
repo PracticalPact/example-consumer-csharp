@@ -1,0 +1,39 @@
+name: CD
+run-name: CD - ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options:
+          - test
+          - production  
+
+jobs:
+  can-i-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pactflow/actions/can-i-deploy@v2
+        name: Can I Deploy?
+        with:
+          application_name: ${{ vars.APPLICATION_NAME }}
+          broker_url: ${{ vars.BROKER_URL }}
+          version: ${{ github.sha }}
+          to_environment: ${{ inputs.environment }}
+          retry_while_unknown: 10  # Call can-i-deploy up to x times
+          retry_interval: 60  # Retry every x seconds
+
+  deploy:
+    needs: can-i-deploy  
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        run: echo "Deploying to ${{ inputs.destination }}..."
+      - name: Record Deployment
+        uses: pactflow/actions/record-deployment@v2
+        with:
+          application_name: ${{ vars.APPLICATION_NAME }}
+          broker_url: ${{ vars.BROKER_URL }}
+          version: ${{ github.sha }}
+          environment: ${{ inputs.environment }}
