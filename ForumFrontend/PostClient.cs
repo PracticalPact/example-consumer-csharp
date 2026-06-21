@@ -3,9 +3,15 @@ using System.Net.Http.Json;
 
 namespace ForumFrontend;
 
-public partial class PostClient : IDisposable
+/// <summary>
+/// This class handles communication with the Forum Backend. It allows the creation and viewing of Posts.
+/// The backend expects the user to be logged in on most requests, and this is proven by passing along a session id in the header.
+/// For each request, there are a number of expected HTTP response codes. If something else happens, an error is thrown.
+/// For expected HTTP errors, a suitable value is returned without panicking.
+/// </summary>
+public class PostClient : IDisposable
 {
-	private const string sessionIdKey = "session-id";
+	private const string SessionIdKey = "session-id";
 	private readonly HttpClient _httpClient;
 
 	public PostClient(Uri baseUri)
@@ -17,7 +23,7 @@ public partial class PostClient : IDisposable
 	public async Task<ClientResult> GetAllPosts(string sessionId)
 	{
 		HttpRequestMessage request = new(HttpMethod.Get, "/posts");
-		request.Headers.Add(sessionIdKey, sessionId);
+		request.Headers.Add(SessionIdKey, sessionId);
 
 		var response = await _httpClient.SendAsync(request);
 
@@ -30,10 +36,9 @@ public partial class PostClient : IDisposable
 		};
 	}
 
-	public async Task<ClientResult> GetPostDetails(string sessionId)
+	public async Task<ClientResult> GetPostDetails(string postId)
 	{
-		HttpRequestMessage request = new(HttpMethod.Get, "/post");
-		request.Headers.Add(sessionIdKey, sessionId);
+		HttpRequestMessage request = new(HttpMethod.Get, $"/posts/{postId}");
 
 		var response = await _httpClient.SendAsync(request);
 
@@ -49,7 +54,7 @@ public partial class PostClient : IDisposable
 	public async Task<ClientResult> CreateNewPost(string sessionId, string title, string content)
 	{
 		HttpRequestMessage request = new(HttpMethod.Post, "/posts");
-		request.Headers.Add(sessionIdKey, sessionId);
+		request.Headers.Add(SessionIdKey, sessionId);
 		request.Content = JsonContent.Create(new { title, content });
 
 		var response = await _httpClient.SendAsync(request);
@@ -85,6 +90,10 @@ public partial class PostClient : IDisposable
 		_httpClient.Dispose();
 	}
 
+	/// <summary>
+	/// Represents the response body to GetAllPosts.
+	/// Will be deserialized from JSON.
+	/// </summary>
 	public class GetAllPostsResponse
 	{
 		public required List<string> Posts { get; set; }
@@ -100,6 +109,10 @@ public partial class PostClient : IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Represents the response body to GetPostDetails.
+	/// Will be deserialized from JSON.
+	/// </summary>
 	public class GetPostDetailsResponse
 	{
 		public required string Title { get; set; }
@@ -111,6 +124,10 @@ public partial class PostClient : IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Represents the response body to CreateNewPost.
+	/// Will be deserialized from JSON.
+	/// </summary>
 	public class CreateNewPostResponse
 	{
 		public required string Id { get; set; }

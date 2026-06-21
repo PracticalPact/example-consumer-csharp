@@ -2,11 +2,11 @@
 
 public abstract record ClientResult;
 
-public record SuccessResult<TContent>(TContent content) : ClientResult
+public record SuccessResult<TContent>(TContent Content) : ClientResult
 {
 	public override string ToString()
 	{
-		return content.ToString();
+		return Content.ToString();
 	}
 }
 
@@ -18,10 +18,10 @@ public record UnauthorizedErrorResult : ClientResult
 	}
 }
 
-public record ServerErrorResult(string message) : ClientResult
+public record ServerErrorResult(string Message) : ClientResult
 {
 	public override string ToString()
 	{
-		return $"A server error occured: {message}.\n";
+		return $"A server error occured: {Message}.\n";
 	}
 }

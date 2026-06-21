@@ -54,8 +54,11 @@ public class ExampleProviderCsharpTest
 			var result = await postClient.GetAllPosts(sessionId);
 
 			var sucResult = Assert.IsType<SuccessResult<PostClient.GetAllPostsResponse>>(result);
-			Assert.NotNull(sucResult.content);
-			Assert.Equal(["post-id-1"], sucResult.content.Posts);
+			// Test that we have read the response body correctly.
+			// We can check for post-id-1 exactly because that is what we stated above would be the example response.
+			// Remember that this part here only is for the Consumer; this part has no influence on the final Contract.
+			Assert.NotNull(sucResult.Content);
+			Assert.Equal(["post-id-1"], sucResult.Content.Posts);
 		});
 	}
 
@@ -104,9 +107,14 @@ public class ExampleProviderCsharpTest
 			.WillRespond()
 			.WithStatus(HttpStatusCode.Created)
 			// This specifies the response body. It must have a field called id of type string.
+			// It must also have fields called title and content, and they must have exactly the same value as in the request body.
+			// We can do this because they are controlled by us, the Consumer.
+			// The reason we add this to the Contract is to ensure that the Provider actually recognises the body we sent in the request.
 			.WithJsonBody(new
 			{
-				id = Match.Type("new-post-id")
+				id = Match.Type("new-post-id"),
+				title = title,
+				content = content
 			});
 
 		await _pact.VerifyAsync(async ctx =>
@@ -115,8 +123,44 @@ public class ExampleProviderCsharpTest
 			var result = await postClient.CreateNewPost(sessionId, title, content);
 
 			var sucResult = Assert.IsType<SuccessResult<PostClient.CreateNewPostResponse>>(result);
-			Assert.NotNull(sucResult.content);
-			Assert.Equal("new-post-id", sucResult.content.Id);
+			Assert.NotNull(sucResult.Content);
+			Assert.Equal("new-post-id", sucResult.Content.Id);
+		});
+	}
+	
+	[Fact]
+	[Trait("Category", "Contract")]
+	[Trait("ContractRole", "Consumer")]
+	public async Task GetPostDetails_PostExists_ReturnsDetails()
+	{
+		string postId = "some-post-id";
+		string exampleTitle = "Some Title";
+		string exampleContent = "Some Content";
+		
+		_pact
+			.UponReceiving("a request for an existing post")
+			.Given($"a post exists with id: {postId}")
+			.WithRequest(HttpMethod.Get, $"/posts/{postId}")
+			.WillRespond()
+			.WithStatus(HttpStatusCode.OK)
+			.WithJsonBody(new
+			{
+				title = Match.Type(exampleTitle),
+				content = Match.Type(exampleContent)
+			});
+
+		await _pact.VerifyAsync(async ctx =>
+		{
+			using PostClient postClient = new(ctx.MockServerUri);
+			var result = await postClient.GetPostDetails(postId);
+
+			var sucResult = Assert.IsType<SuccessResult<PostClient.GetPostDetailsResponse>>(result);
+			// Test that we have read the response body correctly.
+			// We can check for post-id-1 exactly because that is what we stated above would be the example response.
+			// Remember that this part here only is for the Consumer; this part has no influence on the final Contract
+			Assert.NotNull(sucResult.Content);
+			Assert.Equal(exampleTitle, sucResult.Content.Title);
+			Assert.Equal(exampleContent, sucResult.Content.Content);
 		});
 	}
 }

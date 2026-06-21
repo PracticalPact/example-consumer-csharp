@@ -1,59 +1,61 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Http.Json;
-using System.Reflection.Metadata;
-using System.Text;
-using static System.Net.WebRequestMethods;
+﻿using System.Net.Http.Json;
 
-namespace ForumFrontend
+namespace ForumFrontend;
+
+/// <summary>
+/// Handles communication with the SSO microservice (which doesn't exist).
+/// When logging in, it will receive a session id and hold on to it.
+/// Then the PostClient can use it to perform actions on behalf of the logged in user.
+/// 
+/// Again, the SSO microservice does not actually exist, so running this will not work.
+/// That is because it is irrelevant to the example of CDCT.
+/// </summary>
+public class SsoClient : IDisposable
 {
-	internal class SsoClient : IDisposable
+	public string? SessionId { get; private set; }
+
+	private readonly HttpClient _httpClient;
+
+	public SsoClient(Uri baseUri)
 	{
-		public string? sessionId { get; private set; }
+		_httpClient = new();
+		_httpClient.BaseAddress = baseUri;
+	}
 
-		private readonly HttpClient _httpClient;
+	public async Task LogOut()
+	{
+		SessionId = null;
+	}
 
-		public SsoClient(Uri baseUri)
+	public async Task<bool> LogIn(string username, string password)
+	{
+		HttpRequestMessage request = new(HttpMethod.Post, "/login");
+		request.Content = JsonContent.Create(new { username, password });
+
+		var response = await _httpClient.SendAsync(request);
+		if (response.IsSuccessStatusCode)
 		{
-			_httpClient = new();
-			_httpClient.BaseAddress = baseUri;
-		}
-
-		public async Task LogOut()
-		{
-			sessionId = null;
-		}
-
-		public async Task<bool> LogIn(string username, string password)
-		{
-			HttpRequestMessage request = new(HttpMethod.Post, "/login");
-			request.Content = JsonContent.Create(new { username, password });
-
-			var response = await _httpClient.SendAsync(request);
-			if (response.IsSuccessStatusCode)
+			var content = await response.Content.ReadFromJsonAsync<LogInResponseContent>();
+			if (content == null)
 			{
-				var content = await response.Content.ReadFromJsonAsync<LogInResponseContent>();
-				if (content == null)
-				{
-					throw new InvalidOperationException("Expected response body was empty.");
-				}
-				sessionId = content.SessionId;
-				return true;
+				throw new InvalidOperationException("Expected response body was empty.");
 			}
-			else
-			{
-				return false;
-			}
+			SessionId = content.SessionId;
+			return true;
 		}
-
-		public void Dispose()
+		else
 		{
-			_httpClient.Dispose();
+			return false;
 		}
+	}
 
-		private class LogInResponseContent
-		{
-			public required string SessionId { get; set; }
-		}
+	public void Dispose()
+	{
+		_httpClient.Dispose();
+	}
+
+	private class LogInResponseContent
+	{
+		public required string SessionId { get; set; }
 	}
 }

@@ -58,6 +58,7 @@ nunit-*.xml
 
 # IDE
 .vs/
+.idea/
 
 # PACT
 pacts/

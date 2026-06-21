@@ -9,70 +9,22 @@ public static class Program
 
 	private static async Task Run()
 	{
+		// Example usage of the frontend
+		// This will not work as it expects a running backend and SSO microservice.
+		// That is fine, because we are only interested in CDCT, which does not require dependencies to be live.
 		using PostClient postClient = new(new Uri("http://localhost:3000"));
-		using SsoClient ssoClient = new(new Uri("http://localhost:3001"));
+		using SsoClient ssoClient = new(new Uri("https://localhost:8463"));
 
-		Console.WriteLine("Hello world!");
-
-		while (true)
-		{
-			Console.WriteLine();
-
-			if (ssoClient.sessionId == null)
-			{
-				Console.WriteLine("You are logged out. Type in your credentials.");
-				string? username = Console.ReadLine();
-				string? password = Console.ReadLine();
-				if (username == null || password == null)
-				{
-					continue;
-				}
-				bool result = await ssoClient.LogIn(username, password);
-				if (result)
-				{
-					Console.WriteLine("Successfully logged in.");
-				}
-				else
-				{
-					Console.WriteLine("Something went wrong when logging in.");
-				}
-			}
-			else
-			{
-				Console.WriteLine($"Perform one of the following operations:\n" +
-					$"1: Log out\n" +
-					$"2: See all your posts\n" +
-					$"3: See specific post\n" +
-					$"4: Create new post");
-
-				int choice;
-				try
-				{
-					choice = Int32.Parse(Console.ReadLine()!);
-				}
-				catch
-				{
-					Console.WriteLine("Invalid input.");
-					continue;
-				}
-
-				switch (choice)
-				{
-					case 1:
-						throw new NotImplementedException();
-						break;
-					case 2:
-						Console.WriteLine(await postClient.GetAllPosts(ssoClient.sessionId));
-						break;
-					case 3:
-						throw new NotImplementedException();
-						break;
-					case 4:
-						throw new NotImplementedException();
-						break;
-				}
-			}
-
-		}
+		await ssoClient.LogIn("user", "pass");
+		
+		// Create new post
+		var postResult = await postClient.CreateNewPost(ssoClient.SessionId, "Title", "Content");
+		Console.WriteLine(postResult.ToString());
+		
+		// Look at all posts
+		var getResult = await postClient.GetAllPosts(ssoClient.SessionId);
+		Console.WriteLine(getResult.ToString());
+		
+		Console.ReadKey();
 	}
 }
